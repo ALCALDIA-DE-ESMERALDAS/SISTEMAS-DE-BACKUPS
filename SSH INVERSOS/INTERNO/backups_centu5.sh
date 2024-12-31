@@ -116,7 +116,7 @@ clean_old_backups() {
     log "Iniciando limpieza de backups antiguos..."
 
     # Buscar archivos .gz en el directorio de backups y ordenarlos por fecha de modificación (más antiguos primero)
-    local files_to_delete=$(find "${BACKUP_DIR}" -type f -name "*.gz" -printf "%T@ %p\n" | sort -n | head -n -2 | cut -d' ' -f2-)
+    local files_to_delete=$(find "${BACKUP_DIR}" -type f -name "*.gz" -printf "%T@ %p\n" | sort -n | head -n -1 | cut -d' ' -f2-)
 
     # Verificar si hay archivos adicionales para eliminar
     if [ -n "$files_to_delete" ]; then
@@ -137,9 +137,10 @@ main() {
     log "=== Iniciando proceso de backup ==="
     
     check_dependencies
+    clean_old_backups
     check_local_space
     generate_backup
-    clean_old_backups
+ 
 
     local end_time=$(date +%s)
     local total_time=$((end_time - start_time))
