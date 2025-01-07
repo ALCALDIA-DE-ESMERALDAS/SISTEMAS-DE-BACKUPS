@@ -140,8 +140,7 @@ main() {
     clean_old_backups
     check_local_space
     generate_backup
- 
-
+    
     local end_time=$(date +%s)
     local total_time=$((end_time - start_time))
     log "=== Proceso completado: $((total_time/60)) minutos y $((total_time%60)) segundos ==="
