@@ -124,6 +124,7 @@ log "Tiempo total de ejecución del script: ${minutes} minutos y ${seconds} segu
 log "***** Proceso de Backup Finalizado Exitosamente *****"
 
 # Llamar al script de envío de correo y pasar los tiempos de ejecución
+log Enviado correo... ./send_email.sh  "${LOCAL_HOST}" "${start_time}" "${minutes}" "${seconds}" "${LOG_FILE}"
 ./send_email.sh  "${LOCAL_HOST}" "${start_time}" "${minutes}" "${seconds}" "${LOG_FILE}"
 
 exit 0

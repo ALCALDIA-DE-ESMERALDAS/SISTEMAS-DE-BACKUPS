@@ -25,14 +25,18 @@ proc log_message {level message} {
     exec logger -t "ssh_tunnel" "$level: $message"
 }
 
+# Verificar si un puerto está en uso
 proc is_port_in_use {host port} {
+    log_message "INFO" "Verificando puerto $port en $host"
     if {[catch {exec nc -z -w3 $host $port} result]} {
         return 1
     }
     return 0
 }
 
+# Verificar si el túnel está activo
 proc is_tunnel_active {host port} {
+    log_message "INFO" "Verificando túnel en $host:$port"
     if {[catch {exec nc -z -w5 $host $port} result]} {
         log_message "WARNING" "Error verificando túnel en $host:$port"
         return 0
@@ -40,7 +44,9 @@ proc is_tunnel_active {host port} {
     return 1
 }
 
+# Validar configuración
 proc validate_config {host user password port} {
+    log_message "INFO" "Validando configuración... host=$host, user=$user, port=$port"
     if {$host == "" || $user == "" || $password == "" || $port == ""} {
         log_message "ERROR" "Configuración incompleta: host=$host, user=$user, port=$port"
         return 0
@@ -48,25 +54,77 @@ proc validate_config {host user password port} {
     return 1
 }
 
+# Conectar al servidor externo
+proc connect_to_remote {user_remote host_remote port_remote password} {
+    log_message "INFO" "Conectando a $host_remote..."
+    spawn ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $user_remote@$host_remote
+
+    expect {
+        "assword:" {
+            send "$password\r"
+            expect {
+                "$ " {
+                    return 1
+                }
+                timeout {
+                    log_message "ERROR" "Tiempo de espera excedido al conectar al servidor externo"
+                    return 0
+                }
+            }
+        }
+        timeout {
+            log_message "ERROR" "Tiempo de espera excedido esperando prompt de contraseña"
+            return 0
+        }
+    }
+}
+
+# Establecer túnel SSH
 proc establish_tunnel {local_host local_user local_password local_port user_remote host_remote port_remote password max_retries} {
     set retry 0
     while {$retry < $max_retries} {
         log_message "INFO" "Intentando conectar a $local_host con usuario $local_user (Intento [expr {$retry + 1}] de $max_retries)..."
-
-        spawn sshpass -p "$local_password" ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $local_user@$local_host "ssh -N -R $local_port:localhost:$port_remote $user_remote@$host_remote"
+        
+        # Primero conectar al servidor externo
+        if {![connect_to_remote $user_remote $host_remote $port_remote $password]} {
+            incr retry
+            continue
+        }
+        
+        # Luego conectar a la máquina virtual y establecer el túnel
+        spawn sshpass -p "$local_password" ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $local_user@$local_host
         
         expect {
             "assword:" {
-                send "$password\r"
-                exp_continue
+                send "$local_password\r"
+                expect {
+                    "$ " {
+                        # Establecer el túnel inverso
+                        send "ssh -N -R $local_port:localhost:$port_remote $user_remote@$host_remote\r"
+                        expect {
+                            "assword:" {
+                                send "$password\r"
+                                exp_continue
+                            }
+                            timeout {
+                                log_message "WARNING" "Tiempo de espera excedido. Reintentando..."
+                                incr retry
+                            }
+                            eof {
+                                log_message "INFO" "Túnel creado con éxito desde $local_host."
+                                return 1
+                            }
+                        }
+                    }
+                    timeout {
+                        log_message "WARNING" "Tiempo de espera excedido en máquina virtual. Reintentando..."
+                        incr retry
+                    }
+                }
             }
             timeout {
                 log_message "WARNING" "Tiempo de espera excedido. Reintentando..."
                 incr retry
-            }
-            eof {
-                log_message "INFO" "Túnel creado con éxito desde $local_host."
-                return 1
             }
         }
     }
@@ -80,7 +138,7 @@ for {set i 0} {$i < [llength $Hostname]} {incr i} {
     set LOCAL_USER [lindex $users $i]
     set LOCAL_PASSWORD [lindex $password_users $i]
     set LOCAL_PORT [lindex $remote_port $i]
-
+    
     # Validar configuración
     if {![validate_config $LOCAL_HOST $LOCAL_USER $LOCAL_PASSWORD $LOCAL_PORT]} {
         continue
@@ -89,18 +147,17 @@ for {set i 0} {$i < [llength $Hostname]} {incr i} {
     # Comprobar si el túnel está activo
     if {[is_tunnel_active $host_remote $LOCAL_PORT]} {
         log_message "INFO" "Túnel ya activo desde $LOCAL_HOST. No se requiere reinicio."
-        continue
+        #continue
     }
-
+    
     # Verificación de puerto
     if {[is_port_in_use $LOCAL_HOST $LOCAL_PORT]} {
         log_message "ERROR" "Puerto $LOCAL_PORT en uso o inaccesible en $LOCAL_HOST"
-        continue
+        #continue
     }
-
+    
     # Intentos de conexión
     if {![establish_tunnel $LOCAL_HOST $LOCAL_USER $LOCAL_PASSWORD $LOCAL_PORT $user_remote $host_remote $port_remote $password $MAX_RETRIES]} {
         continue
     }
-
 }

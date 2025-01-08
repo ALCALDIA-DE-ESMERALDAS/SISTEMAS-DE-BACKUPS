@@ -7,10 +7,11 @@ MINUTES=$3
 SECONDS=$4
 LOG_FILE=$5
 TEMPLATE_PATH="/home/sis_backups_auto/template.html"
+ERROR_LOG="/home/sis_backups_auto/error_log.txt"
 
 # Verificar argumentos
 if [ -z "$LOG_FILE" ] || [ ! -f "$LOG_FILE" ]; then
-    echo "Error: Archivo de log no encontrado"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Archivo de log no encontrado" >> "$ERROR_LOG"
     exit 1
 fi
 
@@ -30,6 +31,12 @@ fi
 LOG_CONTENT=$(cat "$LOG_FILE" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/[&/\]/\\&/g')
 # Convertir timestamp a formato legible
 FORMATTED_DATE=$(date -d "@$DATE" "+%d-%m-%Y %H:%M:%S")
+
+# Leer y reemplazar variables en template
+if [ ! -f "$TEMPLATE_PATH" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Template no encontrado en $TEMPLATE_PATH" >> "$ERROR_LOG"
+    exit 1
+fi
 
 # Leer y reemplazar variables en template
 EMAIL_CONTENT=$(cat "$TEMPLATE_PATH" | sed \
@@ -57,9 +64,12 @@ password "Alcaldia2024/*"
 tls_starttls off
 EOL
 
-chmod 600 ~/.msmtprc
+# Enviar correo
+echo -e "Subject: $SUBJECT\nContent-Type: text/html\n\n$EMAIL_CONTENT" | msmtp -t "$RECIPIENT" 2>> "$ERROR_LOG"
 
-# Enviar correo (corregido el comando msmtp)
-echo -e "Subject: $SUBJECT\nContent-Type: text/html\n\n$EMAIL_CONTENT" | msmtp -t "$RECIPIENT"
+if [ $? -ne 0 ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Fallo al enviar correo a $RECIPIENT" >> "$ERROR_LOG"
+    exit 1
+fi
 
 exit 0
