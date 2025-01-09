@@ -84,46 +84,44 @@ proc establish_tunnel {local_host local_user local_password local_port user_remo
     set retry 0
     while {$retry < $max_retries} {
         log_message "INFO" "Intentando conectar a $local_host con usuario $local_user (Intento [expr {$retry + 1}] de $max_retries)..."
-        
-        # Primero conectar al servidor externo
-        if {![connect_to_remote $user_remote $host_remote $port_remote $password]} {
-            incr retry
-            continue
-        }
-        
-        # Luego conectar a la máquina virtual y establecer el túnel
+
+        # Conectar a la máquina local usando sshpass
         spawn sshpass -p "$local_password" ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $local_user@$local_host
         
+        expect eof {
+            # Verificar si el túnel está activo con ps aux
+            set tunnel_active [exec ps aux | grep "ssh -N -f -R $local_port:localhost:$port_remote" | grep -v grep]
+            if {[string length $tunnel_active] > 0} {
+                log_message "INFO" "Túnel creado con éxito desde $local_host."
+                return 1
+            } else {
+                log_message "ERROR" "El túnel no pudo establecerse. Reintentando..."
+                incr retry
+            }
+        }
+
+        # Enviar el comando para establecer el túnel SSH inverso
+        send "ssh -N -f -R $local_port:localhost:$port_remote $user_remote@$host_remote\r"
         expect {
             "assword:" {
-                send "$local_password\r"
+                send "$password\r"
                 expect {
-                    "$ " {
-                        # Establecer el túnel inverso
-                        send "ssh -N -R $local_port:localhost:$port_remote $user_remote@$host_remote\r"
-                        expect {
-                            "assword:" {
-                                send "$password\r"
-                                exp_continue
-                            }
-                            timeout {
-                                log_message "WARNING" "Tiempo de espera excedido. Reintentando..."
-                                incr retry
-                            }
-                            eof {
-                                log_message "INFO" "Túnel creado con éxito desde $local_host."
-                                return 1
-                            }
-                        }
-                    }
                     timeout {
-                        log_message "WARNING" "Tiempo de espera excedido en máquina virtual. Reintentando..."
+                        log_message "WARNING" "Timeout esperando confirmación del túnel. Reintentando..."
                         incr retry
+                    }                    
+                    -re ".*Permission denied.*" {
+                        log_message "ERROR" "Permiso denegado al intentar establecer el túnel."
+                        return 0
                     }
                 }
             }
             timeout {
-                log_message "WARNING" "Tiempo de espera excedido. Reintentando..."
+                log_message "WARNING" "Timeout esperando credenciales de $local_user. Reintentando..."
+                incr retry
+            }
+            eof {
+                log_message "ERROR" "Sesión cerrada inesperadamente durante la conexión inicial."
                 incr retry
             }
         }
@@ -131,6 +129,7 @@ proc establish_tunnel {local_host local_user local_password local_port user_remo
     log_message "ERROR" "No se pudo establecer el túnel desde $local_host después de $max_retries intentos."
     return 0
 }
+
 
 # Iterar sobre la lista de hosts locales
 for {set i 0} {$i < [llength $Hostname]} {incr i} {
