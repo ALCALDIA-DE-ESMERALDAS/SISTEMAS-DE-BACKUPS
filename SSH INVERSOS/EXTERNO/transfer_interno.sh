@@ -23,6 +23,32 @@ log "Iniciando descarga del backup desde el servidor CentOS 5..."
 
 # Construir la ruta completa del archivo remoto
 set REMOTE_FILE "${BACKUP_DIR}/${BACKUP_FILE}"
+
+# Verificar la existencia del archivo remoto
+log "Verificando existencia del archivo en el servidor remoto... ${REMOTE_FILE}"    
+spawn ssh -p 2222 -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 root@localhost "test -f ${REMOTE_FILE} && echo 'EXISTS' || echo 'NOT_EXISTS'"
+
+expect {
+    "assword:" {
+        send "$LOCAL_PASSWORD\r"
+        exp_continue
+    }
+    "EXISTS" {
+        log "Archivo encontrado en el servidor remoto."
+    }
+    "NOT_EXISTS" {
+        log "Error: El archivo ${REMOTE_FILE} no existe en el servidor remoto."
+        exit 1
+    }
+    timeout {
+        log "Error: Tiempo de espera excedido al verificar el archivo."
+        exit 1
+    }
+}
+
+# Descargar el backup desde el servidor CentOS 5 con reintentos
+log "Iniciando descarga del backup desde el servidor CentOS 5...${REMOTE_FILE} -> ${LOCAL_PATH}"
+
 set MAX_RETRIES 5
 set retry 0
 

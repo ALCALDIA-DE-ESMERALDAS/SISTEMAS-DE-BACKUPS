@@ -18,7 +18,7 @@ fi
 # Configuración correo
 RECIPIENT="saamare99@gmail.com"
 SUBJECT="Resultado del Backup de Oracle"
-SENDER="aplicaciones@esmeraldas.gob.ec"
+SENDER="tecnologias.informacion@esmeraldas.gob.ec"
 
 # Determinar estado
 if grep -qi "error\|failed\|failure" "$LOG_FILE"; then
@@ -58,9 +58,9 @@ logfile ~/.msmtp.log
 account default
 host mail.esmeraldas.gob.ec
 port 465
-from aplicaciones@esmeraldas.gob.ec
-user aplicaciones@esmeraldas.gob.ec
-password "Alcaldia2024/*"
+from tecnologias.informacion@esmeraldas.gob.ec
+user tecnologias.informacion@esmeraldas.gob.ec
+password "%y#2QT^@77V^5e82"
 tls_starttls off
 EOL
 
