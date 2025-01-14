@@ -4,6 +4,8 @@
 ## FXGS                                                 ##
 ###########################################################
 
+# Ruta del directorio donde se encuentra el script
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
 # Variables del backup
 BACKUP_DIR="/backups/oracle/temp"               # Directorio local para backups
@@ -28,9 +30,10 @@ LOG_FILE="${BACKUP_DIR}/backup_${DATE}.log"      # Archivo de log
 mkdir -p "${BACKUP_DIR}"
 touch "${LOG_FILE}"
 
-# Función de log
+# Función para registrar mensajes en el log
 log() {
-    echo "$(date +'%Y-%m-%d %H:%M:%S') - $1" | tee -a "${LOG_FILE}"
+    local message="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $message" | tee -a "${LOG_FILE}"
 }
 
 # Verificar dependencias
@@ -103,10 +106,15 @@ generate_backup() {
 
 # Función para descargar el backup desde el servidor CentOS 5
 download_backup_centos5() {
-    #ejecutar el script de descarga ./transfer_interno.sh ${BACKUP_FILE}
-       log "Iniciando descarga del backup desde el servidor CentOS 5..."
-    # Ejecutar el script de descarga pasando el nombre del archivo de backup
-    ./transfer_interno.sh "${BACKUP_FILE}"
+    log "Iniciando descarga del backup desde el servidor CentOS 5..."
+
+    # Verificar si el script transfer_interno.sh existe y tiene permisos de ejecución
+    if [[ -x "${SCRIPT_DIR}/transfer_interno.sh" ]]; then
+        "${SCRIPT_DIR}/transfer_interno.sh" "${BACKUP_FILE}"
+    else
+        log "Error: ${SCRIPT_DIR}/transfer_interno.sh no encontrado o no tiene permisos de ejecución."
+        exit 1
+    fi
 }
 
 # Ejecución del script
@@ -124,7 +132,13 @@ log "Tiempo total de ejecución del script: ${minutes} minutos y ${seconds} segu
 log "***** Proceso de Backup Finalizado Exitosamente *****"
 
 # Llamar al script de envío de correo y pasar los tiempos de ejecución
-log Enviado correo... ./send_email.sh  "${LOCAL_HOST}" "${start_time}" "${minutes}" "${seconds}" "${LOG_FILE}"
-./send_email.sh  "${LOCAL_HOST}" "${start_time}" "${minutes}" "${seconds}" "${LOG_FILE}"
+# Enviar correo con los tiempos de ejecución
+log "Enviando correo..."
+if [[ -x "${SCRIPT_DIR}/send_email.sh" ]]; then
+    "${SCRIPT_DIR}/send_email.sh" "${LOCAL_HOST}" "${start_time}" "${minutes}" "${seconds}" "${LOG_FILE}"
+else
+    log "Error: ${SCRIPT_DIR}/send_email.sh no encontrado o no tiene permisos de ejecución."
+    exit 1
+fi
 
 exit 0
