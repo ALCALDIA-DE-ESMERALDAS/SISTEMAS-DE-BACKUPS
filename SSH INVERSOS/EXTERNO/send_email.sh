@@ -60,7 +60,7 @@ host mail.esmeraldas.gob.ec
 port 465
 from tecnologias.informacion@esmeraldas.gob.ec
 user tecnologias.informacion@esmeraldas.gob.ec
-password "%y#2QT^@77V^5e82"
+password "tecnologias.informacion/8956*"
 tls_starttls off
 EOL
 

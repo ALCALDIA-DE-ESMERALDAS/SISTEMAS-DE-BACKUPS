@@ -5,7 +5,7 @@
 ###########################################################
 
 # Cargar configuración
-CONFIG_FILE="./config.sh"
+CONFIG_FILE="/home/sis_backups_auto/config.sh"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Error: Archivo de configuración no encontrado en $CONFIG_FILE"
     echo "Advertencia: Archivo de configuración no encontrado, usando valores por defecto."
@@ -24,7 +24,18 @@ if [ ! -f "$CONFIG_FILE" ]; then
     LOG_DIR="${BACKUP_DIR}"            # Directorio para logs
     DATE_FORMAT="%Y%m%d-%H%M%S"        # Formato de fecha para archivos
 fi
+echo "Config file: $CONFIG_FILE"
 source "$CONFIG_FILE"
+echo "Congiugration variables:"
+echo "ORACLE_SID: $ORACLE_SID"
+echo "ORACLE_HOME: $ORACLE_HOME"
+echo "BACKUP_DIR: $BACKUP_DIR"
+echo "ORACLE_USER: $ORACLE_USER"
+echo "ORACLE_PASSWORD: $ORACLE_PASSWORD"
+echo "REQUIRED_SPACE: $REQUIRED_SPACE"
+echo "BACKUP_RETENTION_DAYS: $BACKUP_RETENTION_DAYS"
+echo "LOG_DIR: $LOG_DIR"
+echo "DATE_FORMAT: $DATE_FORMAT"
 
 # Variables de entorno
 export ORACLE_SID

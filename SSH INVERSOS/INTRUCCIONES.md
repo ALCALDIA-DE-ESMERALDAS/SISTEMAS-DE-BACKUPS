@@ -68,3 +68,11 @@ ssh -R <puerto_remoto>:localhost:<puerto_local> usuario@<servidor_remoto> -p <pu
 - `<puerto_local>`: Puerto local para redirección desde servidor remoto
 - `usuario@<servidor_remoto>`: Credenciales y dirección del servidor
 - `-p <puerto_remoto_servidor_remoto>`: Puerto de conexión en servidor remoto (opcional si es 22)
+
+## Edición de Crontab para la ejecución del script de backup diariamente
+
+```bash
+sudo crontab -e
+
+0 20 * * * /home/sis_backups_auto/backups_envio.sh >> /home/sis_backups_auto/backups_envio.log 2>&1
+```
