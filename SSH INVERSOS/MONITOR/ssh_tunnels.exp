@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+
+# Configuración de logs
+log_file -a "/home/backups_auto/MONITOREO_SSH_INVERSE/ssh_active.log"
+puts "[exec date] Iniciando configuración de túnel SSH"
+
+# Configurar timeout
+set timeout -1
+
+# Obtener argumentos
+if {$argc != 4} {
+    puts "Uso: $argv0 hostname usuario password puerto_remoto"
+    exit 1
+}
+
+# Asignar argumentos a variables
+set hostname [lindex $argv 0]
+set user [lindex $argv 1]
+set password [lindex $argv 2]
+set remote_port [lindex $argv 3]
+
+# Configuraciones fijas
+set remote_server "159.223.186.132"
+set remote_password "alcaldiA2025P"
+set nc_timeout 5
+
+puts "[exec date] Procesando túnel para $hostname:$remote_port"
+
+send "sshpass -p \"$password\" ssh -oStrictHostKeyChecking=no -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $user@$hostname 'nc -zv -w $nc_timeout $remote_server $remote_port || ssh -N -f -R $remote_port:localhost:22 -o \"ServerAliveInterval=60\" -o \"ServerAliveCountMax=3\" root@$remote_server'\r"
+
+expect {
+    "password:" { 
+        send "$remote_password\r"
+        puts "[exec date] Configurando túnel para $hostname"
+    }
+    "succeeded!" {
+        puts "[exec date] Túnel ya activo en $remote_port"
+    }
+    timeout {
+        puts "[exec date] Error: Timeout en $hostname"
+        exit 1
+    }
+}
+
+expect "$ "
+puts "[exec date] Configuración de túnel finalizada"

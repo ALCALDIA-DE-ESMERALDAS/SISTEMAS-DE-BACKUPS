@@ -13,10 +13,10 @@ set password "alcaldiA2025P"
 set MAX_RETRIES 5
 
 # Configuración de hosts locales
-set Hostname {192.168.120.13}
-set users {root}
-set password_users {admin.prueba/2015*}
-set remote_port {2222}
+set Hostname {192.168.120.13, 192.168.120.15}
+set users {root,root}
+set password_users {admin.prueba/2015*,Teclado2025/*}
+set remote_port {2222,2223}
 
 # Función de logging
 proc log_message {level message} {

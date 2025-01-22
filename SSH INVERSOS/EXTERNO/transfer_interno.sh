@@ -1,114 +1,146 @@
 #!/usr/bin/expect -f
 
-# Argumentos pasados al script
+# Default values for parameters
 set BACKUP_FILE [lindex $argv 0]
-set BACKUP_DIR "/backups/oracle/temp"          
-set LOCAL_PASSWORD "admin.prueba/2015*"       
-set timeout -1                                 
-set LOCAL_PATH "/var/backups/back_cabildo"
+set BACKUP_DIR [lindex $argv 1]
+set LOCAL_PASSWORD [lindex $argv 2]
+set PORT [lindex $argv 3]
+set LOCAL_PATH [lindex $argv 4]
 
-# Configuración de logs
-set LOG_DIR "./log/envio"      
+# Set default values if not provided
+if {$BACKUP_DIR == ""} {set BACKUP_DIR "/backups/oracle/temp"}
+if {$LOCAL_PASSWORD == ""} {set LOCAL_PASSWORD "admin.prueba/2015*"}
+if {$PORT == ""} {set PORT "2222"}
+if {$LOCAL_PATH == ""} {set LOCAL_PATH "/var/backups/back_cabildo"}
 
-# Verificar que el archivo de backup está definido
-if {![info exists BACKUP_FILE] || $BACKUP_FILE == ""} {
-    puts "Error: No se especificó un archivo de backup."
-    exit 1
-}
+# Configuration
+set timeout -1
+set LOG_DIR "./log/envio"
+set LOG_FILE "$LOG_DIR/transfer_[clock format [clock seconds] -format %Y%m%d_%H%M%S].log"
 
-# Archivo de log sin la extensión .gz
-set LOG_FILE "${LOG_DIR}/${BACKUP_FILE}.log"
-
-# Crear estructura de directorios para logs
+# Create log directory if it doesn't exist
 if {![file exists $LOG_DIR]} {
-    if [catch {file mkdir $LOG_DIR} error] {
-        puts "Error creando directorio de logs: $error"
-        exit 1
-    }
+    file mkdir $LOG_DIR
 }
 
-# Función de log
-proc log {message} {
-    set timestamp [exec date +%Y-%m-%d\ %H:%M:%S]
+# Logging procedure
+proc log_message {message} {
+    set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S"]
     set log_message "$timestamp - $message"
     
-    # Mostrar en consola
+    # Display in console
     puts $log_message
     
-    # Guardar en archivo de log
+    # Save to log file
     if [catch {
         set fd [open $::LOG_FILE "a"]
         puts $fd $log_message
         close $fd
     } error] {
-        puts "Error escribiendo en archivo de log: $error"
+        puts "Error writing to log file: $error"
     }
 }
 
-# Iniciar el log con información de la ejecución
-log "=== Iniciando nueva transferencia ==="
-log "Archivo a transferir: $BACKUP_FILE"
-log "Ruta origen: $BACKUP_DIR"
-log "Ruta destino: $LOCAL_PATH"
+# Parameter validation
+if {$BACKUP_FILE == ""} {
+    log_message "Error: Backup file parameter is required"
+    exit 1
+}
 
-# Verificar existencia del archivo remoto
-log "Verificando existencia del archivo en el servidor remoto... ${BACKUP_DIR}/${BACKUP_FILE}"    
-spawn ssh -p 2222 -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 root@localhost "test -f ${BACKUP_DIR}/${BACKUP_FILE} && echo 'EXISTS' || echo 'NOT_EXISTS'"
+log_message "=== Starting new transfer process ==="
+log_message "File to transfer: $BACKUP_FILE"
+log_message "Source path: $BACKUP_DIR"
+log_message "Destination path: $LOCAL_PATH"
+
+# Check if remote file exists
+log_message "Verifying file existence on remote server..."
+spawn ssh -p $PORT \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -o HostKeyAlgorithms=+ssh-rsa \
+    -o KexAlgorithms=+diffie-hellman-group14-sha1 \
+    root@localhost \
+    "test -f '$BACKUP_DIR/$BACKUP_FILE' && echo 'EXISTS' || echo 'NOT_EXISTS'"
 
 expect {
-    "assword:" {
+    -re "(?i)password:" {
         send "$LOCAL_PASSWORD\r"
         exp_continue
     }
     "EXISTS" {
-        log "Archivo encontrado en el servidor remoto."
+        log_message "File found on remote server"
     }
     "NOT_EXISTS" {
-        log "Error: El archivo ${BACKUP_DIR}/${BACKUP_FILE} no existe en el servidor remoto."
+        log_message "Error: File $BACKUP_DIR/$BACKUP_FILE does not exist on remote server"
         exit 1
     }
     timeout {
-        log "Error: Tiempo de espera excedido al verificar el archivo."
+        log_message "Error: Timeout while verifying file existence"
         exit 1
+    }
+    eof {
+        # Check the spawn_id status
+        if {[string length [wait]] == 0} {
+            log_message "Error: SSH connection failed"
+            exit 1
+        }
     }
 }
 
-# Descargar el backup desde el servidor CentOS 5 con reintentos
-log "Iniciando descarga del backup desde el servidor CentOS 5...${BACKUP_DIR}/${BACKUP_FILE} -> ${LOCAL_PATH}"
-
-set MAX_RETRIES 5
+# File transfer with retries
+set MAX_RETRIES 3
 set retry 0
+set transfer_success 0
 
-# Descargar el archivo con reintentos
-while {$retry < $MAX_RETRIES} {
-    log "Intento [expr $retry + 1] de $MAX_RETRIES..."
-    set comando "rsync -avz --progress -e 'ssh -p 2222 -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1' root@localhost:${BACKUP_DIR}/${BACKUP_FILE} $LOCAL_PATH"
-    log "Comando: ${comando}"
+while {$retry < $MAX_RETRIES && !$transfer_success} {
+    log_message "Transfer attempt [expr $retry + 1] of $MAX_RETRIES"
+    
+    spawn rsync -avz --progress \
+        -e "ssh -p $PORT \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o HostKeyAlgorithms=+ssh-rsa \
+            -o KexAlgorithms=+diffie-hellman-group14-sha1" \
+        root@localhost:"$BACKUP_DIR/$BACKUP_FILE" \
+        "$LOCAL_PATH/"
 
-    # Ejecutar el comando de transferencia
-    spawn bash -c $comando
-   
     expect {
-        "assword:" {
+        -re "(?i)password:" {
             send "$LOCAL_PASSWORD\r"
             exp_continue
         }
+        "100%" {
+            set transfer_success 1
+        }
         timeout {
-            log "Advertencia: Tiempo de espera excedido. Reintentando..."
+            log_message "Warning: Transfer timeout. Retrying..."
             incr retry
             continue
         }
         eof {
-            log "Transferencia completada con éxito."
-            break
+            # Check if transfer was successful
+            if {[string length [wait]] == 0} {
+                log_message "Warning: Transfer failed. Retrying..."
+                incr retry
+                continue
+            } else {
+                set transfer_success 1
+            }
         }
     }
 }
 
-if {$retry == $MAX_RETRIES} {
-    log "Error: La transferencia falló después de $MAX_RETRIES intentos."
+if {!$transfer_success} {
+    log_message "Error: Transfer failed after $MAX_RETRIES attempts"
     exit 1
 }
 
-log "Backup descargado correctamente desde el servidor CentOS 5."
+# Verify transferred file
+if {![file exists "$LOCAL_PATH/$BACKUP_FILE"]} {
+    log_message "Error: File not found in destination after transfer"
+    exit 1
+}
+
+log_message "Transfer completed successfully"
+log_message "=== Transfer process finished ==="
 exit 0

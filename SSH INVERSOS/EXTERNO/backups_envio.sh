@@ -12,8 +12,9 @@ SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # Variables del backup
 BACKUP_DIR="/backups/oracle/temp"               # Directorio local para backups
 LOCAL_USER="root"                               # Usuario local
-LOCAL_PASSWORD="admin.prueba/2015*"                  # Contraseña local
-LOCAL_HOST="192.168.120.13"                          # IP del servidor local
+LOCAL_PASSWORD="Teclado2025/*"                  # Contraseña local
+LOCAL_HOST="192.168.120.15"                          # IP del servidor local
+PORT=2223                                      # Puerto de conexión
 SH_DIR="/home/sis_backups_auto/backups_centu5.sh"                                       # Directorio de scripts
 
 
@@ -96,10 +97,10 @@ generate_backup() {
     
     # Construir el comando completo
     
-    local comando="sshpass -p \"${LOCAL_PASSWORD}\" ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 2222 root@localhost \"bash ${SH_DIR} ${BACKUP_NAME}\""
+    local comando="sshpass -p \"${LOCAL_PASSWORD}\" ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-rsa -p ${PORT} root@localhost \"bash ${SH_DIR} ${BACKUP_NAME}\""
    
     #log "Ejecutando: ${comando}"
-    eval sshpass -p \"${LOCAL_PASSWORD}\" ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 2222 root@localhost \"bash ${SH_DIR} ${BACKUP_NAME}\"
+    eval sshpass -p \"${LOCAL_PASSWORD}\" ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-rsa -p ${PORT} root@localhost \"bash ${SH_DIR} ${BACKUP_NAME}\"
     
     if [ $? -ne 0 ]; then
         log "Error: Falló la ejecución del script de backup en el servidor local."
@@ -120,7 +121,7 @@ download_backup_centos5() {
         return 1
     fi
 
-    if ! "${SCRIPT_DIR}/transfer_interno.sh" "${BACKUP_FILE}"; then
+    if ! "${SCRIPT_DIR}/transfer_interno.sh" "${BACKUP_FILE} ${BACKUP_DIR}" "${LOCAL_PASSWORD} ${PORT}" "${REMOTE_PATH}"; then
         log "Error: Falló la transferencia del backup."
         return 1
     fi
