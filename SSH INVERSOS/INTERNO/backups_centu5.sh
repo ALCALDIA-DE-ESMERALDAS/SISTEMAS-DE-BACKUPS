@@ -60,7 +60,7 @@ log() {
 # Verificar dependencias
 check_dependencies() {
     log "Verificando dependencias..."
-    local DEPS=("exp" "gzip" "scp" "ssh")
+    local DEPS=("exp" "gzip" "scp" "ssh" "rsync")
 
     for cmd in "${DEPS[@]}"; do
         if ! command -v "$cmd" &>/dev/null; then
@@ -142,6 +142,64 @@ clean_old_backups() {
     fi
 }
 
+# Función para enviar el backup por rsync
+send_backup_rsync() {
+    log "Iniciando transferencia del backup por rsync..."
+    local backup_path="${BACKUP_DIR}/${BACKUP_FILE}"
+
+    # Verificar que el archivo existe
+    if [ ! -f "$backup_path" ]; then
+        log "Error: No se encuentra el archivo de backup: $backup_path"
+        return 1
+    fi
+
+    # Configuración de rsync
+    local RSYNC_HOST="159.223.186.132"
+    local RSYNC_USER="usuario"
+    local RSYNC_MODULE="backup"
+    local RSYNC_PASSWORD_FILE="/home/sis_backups_auto/password"
+    local RSYNC_PORT="9000"
+
+    # Verificar archivo de contraseña
+    if [ ! -f "$RSYNC_PASSWORD_FILE" ]; then
+        log "Error: No se encuentra el archivo de contraseña para rsync"
+        return 1
+    fi
+
+    # Verificar permisos del archivo de contraseña
+    local password_file_permissions
+    password_file_permissions=$(stat -c %a "$RSYNC_PASSWORD_FILE")
+    if [ "$password_file_permissions" != "600" ]; then
+        log "Corrigiendo permisos del archivo de contraseña a 600..."
+        chmod 600 "$RSYNC_PASSWORD_FILE"
+        if [ $? -ne 0 ]; then
+            log "Error al intentar cambiar los permisos del archivo de contraseña"
+            return 1
+        fi
+    fi
+
+    log "Iniciando transferencia del archivo: $backup_path"
+
+    # Ejecutar rsync
+    rsync -avz --progress --stats \
+        --partial \
+        --partial-dir=/tmp/rsync-partial \
+        "$backup_path" \
+        "${RSYNC_USER}@${RSYNC_HOST}::${RSYNC_MODULE}" \
+        --password-file="$RSYNC_PASSWORD_FILE" \
+        --port="$RSYNC_PORT"
+
+    # Verificar el resultado de rsync
+    if [ $? -eq 0 ]; then
+        log "Transferencia completada exitosamente"
+        return 0
+    else
+        log "Error en la transferencia del backup"
+        return 1
+    fi
+}
+
+
 # Ejecución principal
 main() {
     local start_time=$(date +%s)
@@ -151,6 +209,14 @@ main() {
     clean_old_backups
     check_local_space
     generate_backup
+
+    # Añadir el envío por rsync
+    log "=== Iniciando envío del backup ==="
+    send_backup_rsync
+    if [ $? -ne 0 ]; then
+        log "Error: Falló el envío del backup"
+        exit 1
+    fi
     
     local end_time=$(date +%s)
     local total_time=$((end_time - start_time))

@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+# Tiempo de espera por defecto
+set timeout 20
+
+# Leer los argumentos pasados al script
+set local_password [lindex $argv 0]
+set local_user [lindex $argv 1]
+set local_host [lindex $argv 2]
+set local_port [lindex $argv 3]
+set port_remote [lindex $argv 4]
+set user_remote [lindex $argv 5]
+set host_remote [lindex $argv 6]
+
+# Conexión inicial con sshpass
+puts "Ejecutando: sshpass -p '$local_password' ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $local_user@$local_host"
+spawn sshpass -p "$local_password" ssh -oHostKeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group14-sha1 $local_user@$local_host
+expect {
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        exp_continue
+    }
+    "*assword:*" {
+        send "$local_password\r"
+    }
+    "*Permission denied*" {
+        puts "Error: Falló la autenticación para $local_user@$local_host"
+        exit 1
+    }
+    "*$local_user@*" {
+        send "echo 'Conexión inicial establecida'\r"
+    }
+}
+send "exit\r"
+expect eof
+
+# Establecer el túnel SSH inverso
+puts "Estableciendo túnel SSH inverso: ssh -N -f -R $local_port:localhost:$port_remote $user_remote@$host_remote"
+spawn ssh -N -f -R $local_port:localhost:$port_remote $user_remote@$host_remote
+expect {
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        exp_continue
+    }
+    "*assword:*" {
+        send "$local_password\r"
+    }
+    "*Permission denied*" {
+        puts "Error: Falló el establecimiento del túnel SSH inverso"
+        exit 1
+    }
+    eof {
+        puts "Túnel SSH inverso establecido correctamente"
+    }
+}
