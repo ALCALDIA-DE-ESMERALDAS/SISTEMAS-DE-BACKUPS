@@ -4,9 +4,9 @@ ORACLE_SID="bdesme"
 ORACLE_HOME="/u01/app/oracle/product/10.2.0/db_1"
 
 # Configuración de backup
-BACKUP_DIR="/backups/oracle/temp"   # Directorio local para backups
+BACKUP_DIR="/backups/oracle/freenas"   # Directorio local para backups
 ORACLE_USER="sisesmer"             # Usuario de Oracle
-ORACLE_PASSWORD="sisesmer"         # Contraseña de Oracle
+ORACLE_PASSWORD="294A315LS1S"         # Contraseña de Oracle
 REQUIRED_SPACE=10                  # Espacio mínimo requerido en GB
 BACKUP_RETENTION_DAYS=7            # Días a mantener los backups
 

@@ -10,7 +10,7 @@ set -euo pipefail  # Enable strict error handling
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
 # Variables del backup
-BACKUP_DIR="/backups/oracle/temp"               # Directorio local para backups
+BACKUP_DIR="/backups/oracle/freenas"               # Directorio local para backups
 LOCAL_USER="root"                               # Usuario local
 LOCAL_PASSWORD="Teclado2025/*"                  # Contraseña local
 LOCAL_HOST="192.168.120.15"                          # IP del servidor local

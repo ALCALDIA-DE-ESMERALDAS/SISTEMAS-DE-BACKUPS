@@ -7,10 +7,10 @@ puts "[exec date] Iniciando script principal SSH"
 set timeout -1
 
 # Arrays de configuración
-set hostnames {192.168.120.13 192.168.120.15}
+set hostnames {192.168.120.15 192.168.120.13}
 set users {root root}
-set passwords {admin.prueba/2015* Teclado2025/*}
-set remote_ports {2222 2223}
+set passwords {Teclado2025/* admin.prueba/2015*}
+set remote_ports {2223 2222}
 
 # Ruta del script secundario
 set tunnel_script "/home/backups_auto/MONITOREO_SSH_INVERSE/ssh_tunnels.exp"
