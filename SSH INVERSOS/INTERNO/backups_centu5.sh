@@ -151,7 +151,7 @@ send_backup_rsync() {
     if [ ! -f "$backup_path" ]; then
         log "Error: No se encuentra el archivo de backup: $backup_path"
         return 1
-    fi
+    }
 
     # Configuración de rsync
     local RSYNC_HOST="159.223.186.132"
@@ -178,27 +178,54 @@ send_backup_rsync() {
         fi
     fi
 
-    log "Iniciando transferencia del archivo: $backup_path"
-
-    # Ejecutar rsync
+    # Construir el comando rsync (sin mostrar la contraseña)
+    local RSYNC_CMD="rsync -avz --progress --stats --partial --partial-dir=/tmp/rsync-partial '${backup_path}' '${RSYNC_USER}@${RSYNC_HOST}::${RSYNC_MODULE}' --password-file='${RSYNC_PASSWORD_FILE}' --port='${RSYNC_PORT}'"
+    
+    # Loggear el comando (útil para debug)
+    log "Comando a ejecutar: $RSYNC_CMD"
+    
+    # Crear un archivo temporal para capturar la salida de rsync
+    local RSYNC_LOG_TMP=$(mktemp)
+    
+    # Ejecutar rsync y capturar tanto stdout como stderr
     rsync -avz --progress --stats \
         --partial \
         --partial-dir=/tmp/rsync-partial \
         "$backup_path" \
         "${RSYNC_USER}@${RSYNC_HOST}::${RSYNC_MODULE}" \
         --password-file="$RSYNC_PASSWORD_FILE" \
-        --port="$RSYNC_PORT"
-
-    # Verificar el resultado de rsync
-    if [ $? -eq 0 ]; then
-        log "Transferencia completada exitosamente"
-        return 0
+        --port="$RSYNC_PORT" \
+        2>&1 | tee "$RSYNC_LOG_TMP"
+    
+    # Capturar el código de salida de rsync
+    local RSYNC_EXIT_CODE=${PIPESTATUS[0]}
+    
+    # Registrar los detalles importantes del log de rsync
+    log "=== Detalles de la transferencia rsync ==="
+    log "Bytes transferidos: $(grep "bytes transferred" "$RSYNC_LOG_TMP" | tail -n 1)"
+    log "Velocidad de transferencia: $(grep "bytes/sec" "$RSYNC_LOG_TMP" | tail -n 1)"
+    
+    # Si hay error, mostrar el comando de nuevo para fácil copia/pega
+    if [ $RSYNC_EXIT_CODE -ne 0 ]; then
+        log "ERROR: La transferencia falló con código $RSYNC_EXIT_CODE"
+        log "Para reintentar manualmente, puedes usar el siguiente comando:"
+        log "----------------------------------------------------------------"
+        log "$RSYNC_CMD"
+        log "----------------------------------------------------------------"
+        # También mostrar las últimas líneas del log que podrían contener el error
+        log "Últimas líneas del log de error:"
+        tail -n 5 "$RSYNC_LOG_TMP" | while IFS= read -r line; do
+            log "$line"
+        done
     else
-        log "Error en la transferencia del backup"
-        return 1
+        log "Transferencia completada exitosamente"
     fi
-}
+    
+    # Limpiar el archivo temporal
+    rm -f "$RSYNC_LOG_TMP"
 
+    return $RSYNC_EXIT_CODE
+}
 
 # Ejecución principal
 main() {
