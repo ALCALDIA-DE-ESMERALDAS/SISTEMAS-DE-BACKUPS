@@ -95,6 +95,34 @@ check_local_space() {
     fi
 }
 
+# Función para verificar si ya existe un backup válido del día actual
+check_today_backup() {
+    # En RHEL 5.3 el comando date tiene algunas limitaciones
+    local today=$(date +"%Y%m%d")
+    log "Verificando si existe un backup válido para el día $today..."
+    
+    # find en RHEL 5.3 puede no soportar -print -quit, usamos head
+    local today_backup=$(find "${BACKUP_DIR}" -type f -name "*${today}*.gz" | head -1)
+    
+    if [ -n "$today_backup" ]; then
+        # Verificar que el backup encontrado es válido
+        if gzip -t "$today_backup" 2>/dev/null; then
+            local backup_size=$(du -h "$today_backup" | cut -f1)
+            log "Se encontró un backup válido del día actual: $today_backup"
+            log "Tamaño del backup: $backup_size"
+            return 0
+        else
+            log "Se encontró un backup del día actual pero está corrupto: $today_backup"
+            log "Se procederá a generar un nuevo backup"
+            rm -f "$today_backup"
+            return 1
+        fi
+    fi
+    
+    log "No se encontró ningún backup del día actual"
+    return 1
+}
+
 # Función para generar el backup de Oracle
 generate_backup() {
     local start_time=$(date +%s)
@@ -122,24 +150,52 @@ generate_backup() {
     log "Tiempo: $((elapsed/60)) minutos y $((elapsed%60)) segundos"
 }
 
-# Limpieza de backups antiguos (opcional)
-clean_old_backups() {
-    log "Iniciando limpieza de backups antiguos..."
-
-    # Buscar archivos .gz en el directorio de backups y ordenarlos por fecha de modificación (más antiguos primero)
-    local files_to_delete=$(find "${BACKUP_DIR}" -type f -name "*.gz" -printf "%T@ %p\n" | sort -n | head -n -1 | cut -d' ' -f2-)
-
-    # Verificar si hay archivos adicionales para eliminar
-    if [ -n "$files_to_delete" ]; then
-        log "Archivos que serán eliminados:"
-        echo "$files_to_delete" | while read -r file; do
-            log "Eliminando: $file"
-            rm -f "$file"
-        done
-        log "Limpieza completada: solo se conservan los 2 backups más recientes."
-    else
-        log "No hay backups adicionales para eliminar. Todo está en orden."
+# Función para verificar si el nuevo backup se generó correctamente
+verify_new_backup() {
+    local backup_path="${BACKUP_DIR}/${BACKUP_FILE}"
+    
+    if [ ! -f "$backup_path" ]; then
+        log "Error: No se encuentra el nuevo backup en: $backup_path"
+        return 1
     fi
+    
+    if [ ! -s "$backup_path" ]; then
+        log "Error: El nuevo backup está vacío"
+        return 1
+    fi
+    
+    # Verificar que el archivo se puede leer
+    if ! gzip -t "$backup_path" 2>/dev/null; then
+        log "Error: El archivo de backup está corrupto o no es un archivo gzip válido"
+        return 1
+    fi
+    
+    log "Verificación del nuevo backup exitosa"
+    return 0
+}
+
+# Función para limpiar todos los backups excepto el nuevo
+clean_backups() {
+    local new_backup="${BACKUP_DIR}/${BACKUP_FILE}"
+    
+    # Primero verificar que el nuevo backup existe y es válido
+    if ! verify_new_backup; then
+        log "No se realizará la limpieza porque el nuevo backup no es válido"
+        return 1
+    fi
+    
+    log "Limpiando backups antiguos..."
+    
+    # En RHEL 5.3 necesitamos manejar los espacios en nombres de archivo de manera más cuidadosa
+    find "${BACKUP_DIR}" -type f -name "*.gz" | while read -r backup; do
+        if [ "$(readlink -f "$backup")" != "$(readlink -f "$new_backup")" ]; then
+            log "Eliminando backup: $backup"
+            rm -f "$backup"
+        fi
+    done
+    
+    log "Limpieza completada. Se mantiene solo el backup actual"
+    return 0
 }
 
 # Función para enviar el backup por rsync
@@ -151,7 +207,7 @@ send_backup_rsync() {
     if [ ! -f "$backup_path" ]; then
         log "Error: No se encuentra el archivo de backup: $backup_path"
         return 1
-    }
+    fi
 
     # Configuración de rsync
     local RSYNC_HOST="159.223.186.132"
@@ -231,11 +287,22 @@ send_backup_rsync() {
 main() {
     local start_time=$(date +%s)
     log "=== Iniciando proceso de backup ==="
-    
+
+     # Verificar si ya existe un backup válido del día
+    if check_today_backup; then
+        log "Ya existe un backup válido del día actual. No es necesario generar uno nuevo."
+        exit 0
+    fi    
+
     check_dependencies
-    clean_old_backups
     check_local_space
     generate_backup
+
+    # Solo limpiar si el nuevo backup se generó correctamente
+    if ! clean_backups; then
+        log "ADVERTENCIA: No se eliminaron los backups anteriores debido a errores en el nuevo backup"
+        exit 1
+    fi
 
     # Añadir el envío por rsync
     log "=== Iniciando envío del backup ==="
