@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movimiento de Backups Antiguos {{MACHINE_NAME}}</title>
+    <style>
+      /* Estilo general del cuerpo */
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 0;
+        color: #333;
+      }
+
+      /* Contenedor principal */
+      .container {
+        width: 80%;
+        max-width: 1000px;
+        margin: 50px auto;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+
+      /* Estilo del encabezado */
+      .header {
+        background-color: #006064; /* Color diferente al template original para distinguirlo */
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .header h2 {
+        margin: 0;
+        font-size: 26px;
+      }
+
+      /* Estilo general para el contenido */
+      .content {
+        margin-top: 20px;
+      }
+
+      /* Estilo para cada fila de información */
+      .info-row {
+        background-color: #fafafa;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Estilo para las tarjetas de espacio en disco */
+      .disk-space-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .disk-space-card {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #006064;
+      }
+
+      .disk-space-card h3 {
+        margin-top: 0;
+        color: #006064;
+        font-size: 18px;
+      }
+
+      .disk-space-info {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .disk-space-info span {
+        padding: 5px;
+      }
+
+      /* Estilo para la sección de archivos movidos */
+      .moved-files-section {
+        background-color: #f4f4f4;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+      }
+
+      .moved-files-section h3 {
+        margin-top: 0;
+        color: #006064;
+        font-size: 18px;
+      }
+
+      .moved-files-list {
+        font-family: "Courier New", monospace;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background-color: #fff;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        margin-top: 10px;
+      }
+
+      /* Estado del proceso */
+      .status {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+      }
+      .status-success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+      }
+      .status-error {
+        background-color: #fdecea;
+        color: #c62828;
+      }
+
+      /* Pie de página */
+      .footer {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 14px;
+        color: #777;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Movimiento de Backups Antiguos {{MACHINE_NAME}}</h2>
+      </div>
+
+      <div class="content">
+        <!-- Información básica -->
+        <div class="info-row"><b>Fecha y Hora de Ejecución:</b> {{DATE}}</div>
+        <div class="info-row">
+          <b>Estado:</b>
+          <span class="status {{STATUS}}">{{STATUS}}</span>
+        </div>
+
+        <!-- Información de espacio en disco -->
+        <div class="disk-space-container">
+          <!-- Disco Principal -->
+          <div class="disk-space-card">
+            <h3>💾 Disco Principal</h3>
+            <div class="disk-space-info">
+              <span><b>Espacio Total:</b></span>
+              <span>{{MAIN_SPACE_TOTAL}}</span>
+              <span><b>Espacio Disponible:</b></span>
+              <span>{{MAIN_SPACE_AVAILABLE}}</span>
+            </div>
+          </div>
+
+          <!-- Disco de Backup -->
+          <div class="disk-space-card">
+            <h3>💾 Disco de Respaldo</h3>
+            <div class="disk-space-info">
+              <span><b>Espacio Total:</b></span>
+              <span>{{BACKUP_SPACE_TOTAL}}</span>
+              <span><b>Espacio Disponible:</b></span>
+              <span>{{BACKUP_SPACE_AVAILABLE}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de archivos movidos -->
+        <div class="moved-files-section">
+          <h3>📁 Archivos Movidos</h3>
+          <div class="moved-files-list">{{MOVED_FILES}}</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>
+          &copy; 2024 Backup System ESMERALDAS LA BELLA. Todos los derechos
+          reservados.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
