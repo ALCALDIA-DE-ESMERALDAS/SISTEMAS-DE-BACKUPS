@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Backups - Monitor</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+
+      .main-content {
+        padding: 30px;
+      }
+
+      .section {
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 25px;
+        border-left: 4px solid #3498db;
+      }
+
+      .section h2 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 1.5em;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .control-group {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .control-group h3 {
+        color: #34495e;
+        margin-bottom: 15px;
+        font-size: 1.2em;
+      }
+
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+      }
+
+      select:focus,
+      button:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      }
+
+      button {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      button:hover {
+        background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      button:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .backup-all-btn {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      }
+
+      .backup-all-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+      }
+
+      .progress-section {
+        margin-top: 30px;
+      }
+
+      .progress-container {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #27ae60;
+      }
+
+      .progress-bar {
+        background: #ecf0f1;
+        border-radius: 25px;
+        height: 30px;
+        margin: 15px 0;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-fill {
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        height: 100%;
+        width: 0%;
+        transition: width 0.5s ease;
+        border-radius: 25px;
+        position: relative;
+      }
+
+      .progress-fill::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.2) 25%,
+          transparent 25%,
+          transparent 50%,
+          rgba(255, 255, 255, 0.2) 50%,
+          rgba(255, 255, 255, 0.2) 75%,
+          transparent 75%
+        );
+        background-size: 30px 30px;
+        animation: progress-animation 1s linear infinite;
+      }
+
+      @keyframes progress-animation {
+        0% {
+          background-position: 0 0;
+        }
+        100% {
+          background-position: 30px 0;
+        }
+      }
+
+      .progress-text {
+        text-align: center;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-top: 10px;
+      }
+
+      .log-container {
+        max-height: 400px;
+        overflow-y: auto;
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 20px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-top: 20px;
+      }
+
+      .log-entry {
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .log-entry.error {
+        background: rgba(231, 76, 60, 0.2);
+        border-left: 3px solid #e74c3c;
+      }
+
+      .log-entry.success {
+        background: rgba(39, 174, 96, 0.2);
+        border-left: 3px solid #27ae60;
+      }
+
+      .log-entry.info {
+        background: rgba(52, 152, 219, 0.2);
+        border-left: 3px solid #3498db;
+      }
+
+      .timestamp {
+        color: #95a5a6;
+        font-size: 12px;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .status-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-top: 4px solid #3498db;
+      }
+
+      .status-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2c3e50;
+        display: block;
+      }
+
+      .status-label {
+        color: #7f8c8d;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .connection-status {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-left: 10px;
+      }
+
+      .connected {
+        background: #27ae60;
+        animation: pulse 2s infinite;
+      }
+
+      .disconnected {
+        background: #e74c3c;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* ESTILOS PARA SINCRONIZACIÓN ORACLE */
+      .preview-section {
+        border-left-color: #e67e22;
+      }
+
+      .preview-container {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .preview-summary {
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        color: white;
+        padding: 25px;
+      }
+
+      .preview-summary h3 {
+        margin: 0 0 15px 0;
+        font-size: 1.3em;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .summary-card {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .summary-number {
+        font-size: 1.8em;
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .summary-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+      }
+
+      .preview-details {
+        padding: 25px;
+      }
+
+      .detail-section {
+        margin-bottom: 25px;
+        border: 1px solid #ecf0f1;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .detail-header {
+        background: #f8f9fa;
+        padding: 15px;
+        border-bottom: 1px solid #ecf0f1;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .detail-content {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .record-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f1f2f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .record-item:last-child {
+        border-bottom: none;
+      }
+
+      .record-info {
+        flex: 1;
+      }
+
+      .record-code {
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .record-name {
+        color: #7f8c8d;
+        font-size: 0.9em;
+      }
+
+      .record-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+      }
+
+      .badge-new {
+        background: #d5f4e6;
+        color: #27ae60;
+      }
+
+      .badge-conflict {
+        background: #fadbd8;
+        color: #e74c3c;
+      }
+
+      .badge-sql-only {
+        background: #ebf3fd;
+        color: #3498db;
+      }
+
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-content h3 {
+        color: #e74c3c;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .confirmation-details {
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #fff3cd;
+        border-radius: 8px;
+        border-left: 4px solid #ffc107;
+      }
+
+      .confirmation-steps {
+        margin-bottom: 25px;
+      }
+
+      .checkbox-label {
+        display: block;
+        margin-bottom: 12px;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+      }
+
+      .checkbox-label:hover {
+        background: #f8f9fa;
+      }
+
+      .checkbox-label input {
+        margin-right: 10px;
+      }
+
+      .modal-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+      }
+
+      .cancel-btn {
+        background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        color: white;
+        padding: 12px 25px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .confirm-btn {
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        color: white;
+        padding: 12px 25px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .confirm-btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      .cancel-btn:hover {
+        background: linear-gradient(135deg, #7f8c8d 0%, #6c7b7d 100%);
+      }
+
+      .confirm-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+      }
+
+      /* Estado de carga para los botones */
+      .loading {
+        position: relative;
+        color: transparent !important;
+      }
+
+      .loading::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        left: 50%;
+        margin-left: -10px;
+        margin-top: -10px;
+        border: 2px solid transparent;
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .header h1 {
+          font-size: 2em;
+        }
+
+        .main-content {
+          padding: 20px;
+        }
+
+        .summary-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .modal-content {
+          margin: 20px;
+          padding: 20px;
+        }
+
+        .modal-buttons {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 Sistema de Backups</h1>
+        <p>
+          Monitor en tiempo real de backups y sincronización de bases de datos
+        </p>
+      </div>
+
+      <div class="main-content">
+        <!-- Controles principales -->
+        <div class="section">
+          <h2>🎯 Controles de Backup</h2>
+          <div class="controls">
+            <div class="control-group">
+              <h3>Backup Individual</h3>
+              <select id="databaseSelect">
+                <option value="">Selecciona una base de datos...</option>
+              </select>
+              <button id="backupBtn" onclick="startBackup()">
+                Iniciar Backup
+              </button>
+            </div>
+
+            <div class="control-group">
+              <h3>Backup Masivo</h3>
+              <p style="margin-bottom: 15px; color: #7f8c8d">
+                Realiza backup de todas las bases de datos
+              </p>
+              <button
+                id="backupAllBtn"
+                class="backup-all-btn"
+                onclick="startBackupAll()"
+              >
+                Backup de Todas las BD
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sincronización Oracle -->
+        <div class="section">
+          <h2>🔄 Sincronización Oracle → SQL Server</h2>
+          <p style="margin-bottom: 20px; color: #7f8c8d">
+            Sincronizar datos de empleados desde Oracle (v_empleados) a SQL
+            Server (datos_funcionario)
+          </p>
+
+          <div class="controls">
+            <div class="control-group">
+              <h3>Preview de Sincronización</h3>
+              <p style="margin-bottom: 15px; color: #7f8c8d; font-size: 0.9em">
+                Revisar qué registros se van a sincronizar antes de ejecutar
+              </p>
+              <button id="previewBtn" onclick="loadSyncPreview()">
+                📊 Ver Preview
+              </button>
+            </div>
+
+            <div class="control-group">
+              <h3>Ejecutar Sincronización</h3>
+              <p style="margin-bottom: 15px; color: #7f8c8d; font-size: 0.9em">
+                Ejecutar la sincronización real de datos
+              </p>
+              <button
+                id="syncBtn"
+                class="backup-all-btn"
+                onclick="attemptSyncConfirmation()"
+                disabled
+              >
+                🔄 Sincronizar Datos
+              </button>
+              <div
+                id="syncStatusMessage"
+                style="margin-top: 10px; font-size: 0.9em; color: #e74c3c"
+              >
+                ⚠️ Primero debes cargar el preview de sincronización
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado de conexión -->
+        <div class="section">
+          <h2>🔗 Estado de Conexión</h2>
+          <div class="status-grid">
+            <div class="status-card">
+              <span class="status-value" id="serverStatus">-</span>
+              <div class="status-label">Servidor API</div>
+            </div>
+            <div class="status-card">
+              <span class="status-value" id="sqlStatus">-</span>
+              <div class="status-label">SQL Server</div>
+            </div>
+            <div class="status-card">
+              <span class="status-value" id="oracleStatus">-</span>
+              <div class="status-label">Oracle DB</div>
+            </div>
+            <div class="status-card">
+              <span class="status-value" id="rsyncStatus">-</span>
+              <div class="status-label">Servidor Rsync</div>
+            </div>
+            <div class="status-card">
+              <span class="status-value" id="dbCount">-</span>
+              <div class="status-label">Bases de Datos</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview de Sincronización -->
+        <div class="section preview-section hidden" id="syncPreviewSection">
+          <h2>📋 Preview de Sincronización</h2>
+          <div class="preview-container">
+            <!-- Resumen general -->
+            <div class="preview-summary" id="previewSummary">
+              <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Detalles de registros -->
+            <div class="preview-details" id="previewDetails">
+              <!-- Se llena dinámicamente -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress de backup -->
+        <div class="section progress-section hidden" id="progressSection">
+          <h2>
+            📊 Progreso del Proceso
+            <span
+              class="connection-status disconnected"
+              id="progressStatus"
+            ></span>
+          </h2>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Esperando...</div>
+
+            <div class="log-container" id="logContainer">
+              <div class="log-entry info">
+                <span class="timestamp">[Sistema]</span> Listo para iniciar
+                procesos...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        <div class="modal hidden" id="confirmationModal" data-backdrop="static">
+          <div class="modal-content">
+            <h3>⚠️ Confirmación de Sincronización</h3>
+            <div class="confirmation-details" id="confirmationDetails">
+              <p>¿Estás seguro de que deseas ejecutar la sincronización?</p>
+              <p>
+                <strong
+                  >Esta acción modificará datos en la base de datos SQL
+                  Server.</strong
+                >
+              </p>
+            </div>
+
+            <div class="confirmation-steps">
+              <label class="checkbox-label">
+                <input type="checkbox" id="firstConfirm" />
+                He revisado el preview y entiendo los cambios que se van a
+                realizar
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="secondConfirm" />
+                Confirmo que quiero proceder con la sincronización
+              </label>
+            </div>
+
+            <div class="modal-buttons">
+              <button onclick="closeConfirmationModal()" class="cancel-btn">
+                ❌ Cancelar
+              </button>
+              <button
+                id="executeBtn"
+                onclick="executeSynchronization()"
+                disabled
+                class="confirm-btn"
+              >
+                ✅ Ejecutar Sincronización
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Ahora que se sirve desde el mismo servidor, usar rutas relativas
+      const API_BASE = window.location.origin;
+      let currentSessionId = null;
+      let eventSource = null;
+      let databases = [];
+      let currentPreviewData = null;
+      let isPreviewLoading = false;
+
+      // Inicializar la aplicación
+      async function init() {
+        await loadDatabases();
+        await checkStatus();
+
+        // Verificar estado cada 30 segundos
+        setInterval(checkStatus, 30000);
+      }
+
+      // Cargar lista de bases de datos
+      async function loadDatabases() {
+        try {
+          const response = await fetch(`${API_BASE}/databases`);
+          const data = await response.json();
+
+          databases = data.databases;
+          const select = document.getElementById("databaseSelect");
+          select.innerHTML =
+            '<option value="">Selecciona una base de datos...</option>';
+
+          databases.forEach((db) => {
+            const option = document.createElement("option");
+            option.value = db;
+            option.textContent = db;
+            select.appendChild(option);
+          });
+
+          updateStatus("dbCount", databases.length);
+        } catch (error) {
+          console.error("Error cargando bases de datos:", error);
+          addLog("error", "Error cargando lista de bases de datos");
+        }
+      }
+
+      // Verificar estado de conexiones
+      async function checkStatus() {
+        // Estado del servidor API
+        try {
+          const response = await fetch(`${API_BASE}/status`);
+          updateStatus("serverStatus", response.ok ? "✅ Online" : "❌ Error");
+        } catch (error) {
+          updateStatus("serverStatus", "❌ Offline");
+        }
+
+        // Estado SQL Server
+        try {
+          const response = await fetch(`${API_BASE}/test-connection`);
+          const data = await response.json();
+          updateStatus("sqlStatus", data.success ? "✅ Conectado" : "❌ Error");
+        } catch (error) {
+          updateStatus("sqlStatus", "❌ Error");
+        }
+
+        // Estado Oracle
+        try {
+          const response = await fetch(`${API_BASE}/test-oracle`);
+          const data = await response.json();
+          updateStatus(
+            "oracleStatus",
+            data.success ? "✅ Conectado" : "❌ Error"
+          );
+        } catch (error) {
+          updateStatus("oracleStatus", "❌ Error");
+        }
+
+        // Estado Rsync
+        try {
+          const response = await fetch(`${API_BASE}/test-rsync`);
+          const data = await response.json();
+          updateStatus(
+            "rsyncStatus",
+            data.success ? "✅ Disponible" : "❌ Error"
+          );
+        } catch (error) {
+          updateStatus("rsyncStatus", "❌ Error");
+        }
+      }
+
+      function updateStatus(elementId, value) {
+        document.getElementById(elementId).textContent = value;
+      }
+
+      // Iniciar backup individual
+      async function startBackup() {
+        const database = document.getElementById("databaseSelect").value;
+        if (!database) {
+          alert("Por favor selecciona una base de datos");
+          return;
+        }
+
+        try {
+          setButtonsDisabled(true);
+          showProgressSection();
+          resetProgress();
+
+          const response = await fetch(`${API_BASE}/backup/${database}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            currentSessionId = data.sessionId;
+            addLog("info", `Backup iniciado para ${database}`);
+            addLog("info", `Session ID: ${currentSessionId}`);
+            connectToProgress();
+          } else {
+            addLog("error", `Error: ${data.error}`);
+            setButtonsDisabled(false);
+          }
+        } catch (error) {
+          addLog("error", `Error de conexión: ${error.message}`);
+          setButtonsDisabled(false);
+        }
+      }
+
+      // Iniciar backup de todas las bases de datos
+      async function startBackupAll() {
+        if (
+          !confirm(
+            `¿Estás seguro de realizar backup de todas las ${databases.length} bases de datos?`
+          )
+        ) {
+          return;
+        }
+
+        try {
+          setButtonsDisabled(true);
+          showProgressSection();
+          resetProgress();
+
+          const response = await fetch(`${API_BASE}/backup/all`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            currentSessionId = data.sessionId;
+            addLog(
+              "info",
+              `Backup masivo iniciado para ${data.databases.length} bases de datos`
+            );
+            addLog("info", `Session ID: ${currentSessionId}`);
+            connectToProgress();
+          } else {
+            addLog("error", `Error: ${data.error}`);
+            setButtonsDisabled(false);
+          }
+        } catch (error) {
+          addLog("error", `Error de conexión: ${error.message}`);
+          setButtonsDisabled(false);
+        }
+      }
+
+      // FUNCIÓN CORREGIDA: Cargar preview de sincronización
+      async function loadSyncPreview() {
+        // Prevenir múltiples cargas simultáneas
+        if (isPreviewLoading) {
+          console.log("Preview ya está cargando, evitando carga duplicada");
+          return;
+        }
+
+        try {
+          isPreviewLoading = true;
+          setPreviewButtonDisabled(true);
+          showPreviewLoading();
+
+          // Limpiar datos previos
+          currentPreviewData = null;
+          updateSyncButtonState();
+
+          console.log("Iniciando carga de preview...");
+          const response = await fetch(`${API_BASE}/sync/preview`);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log("Respuesta del servidor:", data);
+
+          if (data.success) {
+            // Validar que los datos están completos
+            if (!data.summary || !data.details) {
+              throw new Error("Datos incompletos en la respuesta del servidor");
+            }
+
+            currentPreviewData = data;
+            displayPreviewData(data);
+            showPreviewSection();
+            updateSyncButtonState();
+            addLog("info", "Preview cargado exitosamente");
+            console.log(
+              "Preview cargado y datos almacenados:",
+              currentPreviewData
+            );
+          } else {
+            throw new Error(data.error || "Error desconocido del servidor");
+          }
+        } catch (error) {
+          console.error("Error en loadSyncPreview:", error);
+          addLog("error", `Error en preview: ${error.message}`);
+          alert(`Error cargando preview: ${error.message}`);
+          currentPreviewData = null;
+          updateSyncButtonState();
+        } finally {
+          isPreviewLoading = false;
+          setPreviewButtonDisabled(false);
+          hidePreviewLoading();
+        }
+      }
+
+      // FUNCIÓN NUEVA: Actualizar estado del botón de sincronización
+      function updateSyncButtonState() {
+        const syncBtn = document.getElementById("syncBtn");
+        const statusMessage = document.getElementById("syncStatusMessage");
+
+        if (currentPreviewData && currentPreviewData.success) {
+          syncBtn.disabled = false;
+          statusMessage.innerHTML =
+            "✅ Preview cargado - Listo para sincronizar";
+          statusMessage.style.color = "#27ae60";
+        } else {
+          syncBtn.disabled = true;
+          statusMessage.innerHTML =
+            "⚠️ Primero debes cargar el preview de sincronización";
+          statusMessage.style.color = "#e74c3c";
+        }
+      }
+
+      // FUNCIÓN NUEVA: Validación antes de mostrar confirmación
+      function attemptSyncConfirmation() {
+        console.log("Intentando mostrar confirmación...");
+        console.log("Estado currentPreviewData:", currentPreviewData);
+
+        if (!currentPreviewData) {
+          console.log("No hay datos de preview");
+          alert(
+            "❌ Error: No se ha cargado el preview de sincronización.\n\nPor favor, haz clic en 'Ver Preview' primero para cargar los datos de las bases de datos."
+          );
+          return;
+        }
+
+        if (!currentPreviewData.success) {
+          console.log("Preview no fue exitoso");
+          alert(
+            "❌ Error: El preview no se cargó correctamente.\n\nIntenta cargar el preview nuevamente."
+          );
+          return;
+        }
+
+        if (!currentPreviewData.summary) {
+          console.log("No hay resumen en los datos");
+          alert(
+            "❌ Error: Datos de preview incompletos.\n\nIntenta cargar el preview nuevamente."
+          );
+          return;
+        }
+
+        console.log("Validación exitosa, mostrando confirmación");
+        showSyncConfirmation();
+      }
+
+      // Mostrar datos del preview
+      function displayPreviewData(data) {
+        const summaryContainer = document.getElementById("previewSummary");
+        const detailsContainer = document.getElementById("previewDetails");
+
+        // Resumen
+        summaryContainer.innerHTML = `
+          <h3>📊 Resumen de Sincronización</h3>
+          <p>Última actualización: ${new Date(
+            data.timestamp
+          ).toLocaleString()}</p>
+          
+          <div class="summary-grid">
+            <div class="summary-card">
+              <span class="summary-number">${data.summary.oracleRecords}</span>
+              <div class="summary-label">Registros Oracle</div>
+            </div>
+            <div class="summary-card">
+              <span class="summary-number">${data.summary.sqlRecords}</span>
+              <div class="summary-label">Registros SQL</div>
+            </div>
+            <div class="summary-card">
+              <span class="summary-number">${data.summary.newRecords}</span>
+              <div class="summary-label">Nuevos</div>
+            </div>
+            <div class="summary-card">
+              <span class="summary-number">${
+                data.summary.conflictingRecords
+              }</span>
+              <div class="summary-label">Conflictos</div>
+            </div>
+            <div class="summary-card">
+              <span class="summary-number">${data.summary.sqlOnlyRecords}</span>
+              <div class="summary-label">Solo en SQL</div>
+            </div>
+          </div>
+        `;
+
+        // Detalles
+        let detailsHtml = "";
+
+        // Registros nuevos
+        if (data.details.newRecords.length > 0) {
+          detailsHtml += `
+            <div class="detail-section">
+              <div class="detail-header">
+                ➕ Registros Nuevos (${data.summary.newRecords} total)
+              </div>
+              <div class="detail-content">
+          `;
+
+          data.details.newRecords.forEach((record) => {
+            detailsHtml += `
+              <div class="record-item">
+                <div class="record-info">
+                  <div class="record-code">${record.CODIGO_EMPLEADO}</div>
+                  <div class="record-name">${record.NOMBRE_EMPLEADO}</div>
+                </div>
+                <span class="record-badge badge-new">NUEVO</span>
+              </div>
+            `;
+          });
+
+          if (data.summary.newRecords > 10) {
+            detailsHtml += `
+              <div class="record-item" style="background: #f8f9fa; font-style: italic;">
+                ... y ${data.summary.newRecords - 10} registros más
+              </div>
+            `;
+          }
+
+          detailsHtml += `</div></div>`;
+        }
+
+        // Registros conflictivos
+        if (data.details.conflictingRecords.length > 0) {
+          detailsHtml += `
+            <div class="detail-section">
+              <div class="detail-header">
+                ⚠️ Registros con Conflictos (${data.summary.conflictingRecords} total)
+              </div>
+              <div class="detail-content">
+          `;
+
+          data.details.conflictingRecords.forEach((record) => {
+            detailsHtml += `
+              <div class="record-item">
+                <div class="record-info">
+                  <div class="record-code">${record.oracle.CODIGO_EMPLEADO}</div>
+                  <div class="record-name">${record.oracle.NOMBRE_EMPLEADO}</div>
+                </div>
+                <span class="record-badge badge-conflict">CONFLICTO</span>
+              </div>
+            `;
+          });
+
+          if (data.summary.conflictingRecords > 10) {
+            detailsHtml += `
+              <div class="record-item" style="background: #f8f9fa; font-style: italic;">
+                ... y ${data.summary.conflictingRecords - 10} registros más
+              </div>
+            `;
+          }
+
+          detailsHtml += `</div></div>`;
+        }
+
+        // Registros solo en SQL
+        if (data.details.sqlOnlyRecords.length > 0) {
+          detailsHtml += `
+            <div class="detail-section">
+              <div class="detail-header">
+                ℹ️ Registros Solo en SQL Server (${data.summary.sqlOnlyRecords} total)
+              </div>
+              <div class="detail-content">
+          `;
+
+          data.details.sqlOnlyRecords.forEach((record) => {
+            detailsHtml += `
+              <div class="record-item">
+                <div class="record-info">
+                  <div class="record-code">${record.codigo_empleado}</div>
+                  <div class="record-name">${record.nombres}</div>
+                </div>
+                <span class="record-badge badge-sql-only">SOLO SQL</span>
+              </div>
+            `;
+          });
+
+          if (data.summary.sqlOnlyRecords > 10) {
+            detailsHtml += `
+              <div class="record-item" style="background: #f8f9fa; font-style: italic;">
+                ... y ${data.summary.sqlOnlyRecords - 10} registros más
+              </div>
+            `;
+          }
+
+          detailsHtml += `</div></div>`;
+        }
+
+        if (detailsHtml === "") {
+          detailsHtml = `
+            <div class="detail-section">
+              <div class="detail-header">✅ No hay cambios pendientes</div>
+              <div class="detail-content" style="padding: 20px; text-align: center; color: #7f8c8d;">
+                Todos los registros están sincronizados
+              </div>
+            </div>
+          `;
+        }
+
+        detailsContainer.innerHTML = detailsHtml;
+      }
+
+      // Mostrar confirmación de sincronización (CORREGIDA)
+      function showSyncConfirmation() {
+        console.log("Mostrando confirmación con datos:", currentPreviewData);
+
+        const confirmationDetails = document.getElementById(
+          "confirmationDetails"
+        );
+        const totalChanges =
+          currentPreviewData.summary.newRecords +
+          currentPreviewData.summary.conflictingRecords;
+
+        confirmationDetails.innerHTML = `
+          <p><strong>Se van a procesar ${totalChanges} registros:</strong></p>
+          <ul>
+            <li>✅ ${currentPreviewData.summary.newRecords} registros nuevos serán insertados</li>
+            <li>🔄 ${currentPreviewData.summary.conflictingRecords} registros serán actualizados</li>
+            <li>ℹ️ ${currentPreviewData.summary.sqlOnlyRecords} registros permanecerán solo en SQL</li>
+          </ul>
+          <p><strong>Esta acción modificará la tabla datos_funcionario en la base biometricos.</strong></p>
+        `;
+
+        document.getElementById("confirmationModal").classList.remove("hidden");
+        resetConfirmationCheckboxes();
+      }
+
+      // Cerrar modal de confirmación
+      function closeConfirmationModal() {
+        document.getElementById("confirmationModal").classList.add("hidden");
+        resetConfirmationCheckboxes();
+      }
+
+      // Resetear checkboxes de confirmación
+      function resetConfirmationCheckboxes() {
+        document.getElementById("firstConfirm").checked = false;
+        document.getElementById("secondConfirm").checked = false;
+        updateExecuteButton();
+      }
+
+      // Actualizar estado del botón ejecutar
+      function updateExecuteButton() {
+        const firstChecked = document.getElementById("firstConfirm").checked;
+        const secondChecked = document.getElementById("secondConfirm").checked;
+        document.getElementById("executeBtn").disabled = !(
+          firstChecked && secondChecked
+        );
+      }
+
+      // Ejecutar sincronización
+      async function executeSynchronization() {
+        try {
+          closeConfirmationModal();
+          setButtonsDisabled(true);
+          showProgressSection();
+          resetProgress();
+
+          const response = await fetch(`${API_BASE}/sync/execute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              confirmed: true,
+              doubleConfirmed: true,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            currentSessionId = data.sessionId;
+            addLog("info", "Sincronización iniciada");
+            addLog("info", `Session ID: ${currentSessionId}`);
+            connectToProgress();
+          } else {
+            addLog("error", `Error: ${data.error}`);
+            setButtonsDisabled(false);
+          }
+        } catch (error) {
+          addLog("error", `Error de conexión: ${error.message}`);
+          setButtonsDisabled(false);
+        }
+      }
+
+      // Conectar al stream de progress
+      function connectToProgress() {
+        if (eventSource) {
+          eventSource.close();
+        }
+
+        if (!currentSessionId) return;
+
+        eventSource = new EventSource(
+          `${API_BASE}/progress/${currentSessionId}`
+        );
+
+        eventSource.onopen = () => {
+          document.getElementById("progressStatus").className =
+            "connection-status connected";
+          addLog("info", "Conectado al stream de progress");
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleProgressUpdate(data);
+          } catch (error) {
+            console.error("Error parsing progress data:", error);
+          }
+        };
+
+        eventSource.onerror = () => {
+          document.getElementById("progressStatus").className =
+            "connection-status disconnected";
+          addLog("error", "Error en conexión de progress");
+        };
+
+        eventSource.onclose = () => {
+          document.getElementById("progressStatus").className =
+            "connection-status disconnected";
+        };
+      }
+
+      // Manejar actualizaciones de progress
+      function handleProgressUpdate(data) {
+        const { step, message, percentage } = data;
+
+        // Actualizar barra de progreso
+        if (percentage !== null) {
+          updateProgress(percentage, message);
+        }
+
+        // Determinar tipo de log
+        let logType = "info";
+        if (step.includes("error")) {
+          logType = "error";
+        } else if (step.includes("complete") || step.includes("success")) {
+          logType = "success";
+        }
+
+        addLog(logType, `[${step}] ${message}`);
+
+        // Si el proceso terminó
+        if (step === "success" || step === "complete" || percentage === 100) {
+          setTimeout(() => {
+            setButtonsDisabled(false);
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
+            }
+            document.getElementById("progressStatus").className =
+              "connection-status disconnected";
+          }, 2000);
+        }
+      }
+
+      function updateProgress(percentage, text) {
+        document.getElementById("progressFill").style.width = `${percentage}%`;
+        document.getElementById(
+          "progressText"
+        ).textContent = `${text} (${percentage}%)`;
+      }
+
+      function resetProgress() {
+        updateProgress(0, "Iniciando...");
+        document.getElementById("logContainer").innerHTML = "";
+      }
+
+      function showProgressSection() {
+        document.getElementById("progressSection").classList.remove("hidden");
+      }
+
+      function setButtonsDisabled(disabled) {
+        document.getElementById("backupBtn").disabled = disabled;
+        document.getElementById("backupAllBtn").disabled = disabled;
+        document.getElementById("previewBtn").disabled = disabled;
+
+        // Solo deshabilitar el botón de sync si no hay datos de preview
+        if (disabled) {
+          document.getElementById("syncBtn").disabled = true;
+        } else {
+          updateSyncButtonState();
+        }
+      }
+
+      // Funciones auxiliares para sincronización
+      function setPreviewButtonDisabled(disabled) {
+        const btn = document.getElementById("previewBtn");
+        btn.disabled = disabled;
+
+        if (disabled) {
+          btn.classList.add("loading");
+          btn.textContent = "🔄 Cargando...";
+        } else {
+          btn.classList.remove("loading");
+          btn.textContent = "📊 Ver Preview";
+        }
+      }
+
+      function showPreviewSection() {
+        document
+          .getElementById("syncPreviewSection")
+          .classList.remove("hidden");
+      }
+
+      function showPreviewLoading() {
+        const summaryContainer = document.getElementById("previewSummary");
+        summaryContainer.innerHTML = `
+          <h3>⏳ Cargando Preview...</h3>
+          <p>Consultando bases de datos Oracle y SQL Server...</p>
+          <div style="margin-top: 15px;">
+            <div style="background: rgba(255,255,255,0.2); height: 4px; border-radius: 2px; overflow: hidden;">
+              <div style="background: white; height: 100%; width: 50%; animation: loading-bar 1.5s ease-in-out infinite;"></div>
+            </div>
+          </div>
+          <style>
+            @keyframes loading-bar {
+              0% { margin-left: -100%; }
+              50% { margin-left: 0%; }
+              100% { margin-left: 100%; }
+            }
+          </style>
+        `;
+
+        const detailsContainer = document.getElementById("previewDetails");
+        detailsContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: #7f8c8d;">
+            <p>Analizando diferencias entre las bases de datos...</p>
+          </div>
+        `;
+      }
+
+      function hidePreviewLoading() {
+        // Se oculta cuando se muestra el contenido real
+      }
+
+      function addLog(type, message) {
+        const logContainer = document.getElementById("logContainer");
+        const timestamp = new Date().toLocaleTimeString();
+
+        const logEntry = document.createElement("div");
+        logEntry.className = `log-entry ${type}`;
+        logEntry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span> ${message}
+            `;
+
+        logContainer.appendChild(logEntry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+
+      // Event listeners para los checkboxes
+      document.addEventListener("DOMContentLoaded", function () {
+        const firstConfirm = document.getElementById("firstConfirm");
+        const secondConfirm = document.getElementById("secondConfirm");
+
+        if (firstConfirm)
+          firstConfirm.addEventListener("change", updateExecuteButton);
+        if (secondConfirm)
+          secondConfirm.addEventListener("change", updateExecuteButton);
+
+        // Inicializar estado del botón de sincronización
+        updateSyncButtonState();
+      });
+
+      // Inicializar cuando cargue la página
+      document.addEventListener("DOMContentLoaded", init);
+
+      // Limpiar conexiones cuando se cierre la página
+      window.addEventListener("beforeunload", () => {
+        if (eventSource) {
+          eventSource.close();
+        }
+      });
+    </script>
+  </body>
+</html>

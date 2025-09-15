@@ -1,0 +1,206 @@
+# =================================
+# ARCHIVOS CRÍTICOS DE SEGURIDAD
+# =================================
+# Variables de entorno (¡NUNCA subir!)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Archivos de password y certificados
+*_password.txt
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+rsync_password*
+sql_password*
+
+# =================================
+# LOGS Y ARCHIVOS TEMPORALES
+# =================================
+# Logs del servicio
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# PM2 logs
+.pm2/
+
+# Archivos de backup temporales
+temp/
+tmp/
+*.bak
+*.backup
+*.tmp
+backups/
+
+# =================================
+# DEPENDENCIAS Y CACHE
+# =================================
+# Node modules
+node_modules/
+npm-cache/
+.npm/
+.yarn/
+.pnp.*
+.yarn-integrity
+
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# =================================
+# ARCHIVOS DE CONFIGURACIÓN ESPECÍFICOS
+# =================================
+# Configuraciones locales
+config/local.json
+config/production.json
+config/secrets.json
+
+# Archivos de base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# =================================
+# ARCHIVOS DEL SISTEMA
+# =================================
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =================================
+# HERRAMIENTAS DE DESARROLLO
+# =================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# Vim
+*.swp
+*.swo
+*.swn
+
+# =================================
+# ARCHIVOS DE PRUEBA Y DESARROLLO
+# =================================
+# Coverage reports
+coverage/
+*.lcov
+.nyc_output
+
+# Test files
+test-results/
+*.test.js.snap
+
+# =================================
+# ARCHIVOS DE DOCUMENTACIÓN SENSIBLE
+# =================================
+# Documentación con información sensible
+PASSWORDS.md
+SECRETS.md
+PRIVATE_NOTES.md
+INTERNAL_DOCS.md
+
+# =================================
+# ARCHIVOS DE CONFIGURACIÓN DE SERVICIOS
+# =================================
+# Docker con información sensible
+docker-compose.override.yml
+.dockerignore
+
+# Kubernetes secrets
+*-secret.yaml
+*-secret.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# =================================
+# ARCHIVOS ESPECÍFICOS DEL PROYECTO
+# =================================
+# Archivos de configuración SQL Server
+sqlcmd_history.txt
+osql_history.txt
+
+# Archivos de configuración rsync específicos
+rsyncd.conf
+rsyncd.secrets
+
+# Scripts de configuración con passwords
+setup_with_passwords.sh
+configure_secrets.bat
+
+# =================================
+# REGLAS ESPECIALES
+# =================================
+# Permitir archivos de ejemplo (sin datos reales)
+!.env.example
+!config/example.json
+!scripts/example_*.sh
+
+# Mantener estructura de directorios vacíos
+!logs/.gitkeep
+!temp/.gitkeep
+
+refactor/
+pnpm-lock.yaml
