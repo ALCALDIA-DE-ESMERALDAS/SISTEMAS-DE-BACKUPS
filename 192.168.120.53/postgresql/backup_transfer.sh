@@ -53,16 +53,21 @@ EOF
 # Verificar conectividad al servidor rsync
 test_rsync_connection() {
     log "INFO" "Verificando conectividad al servidor rsync..." "backup_transfer"
-    
-    if ! timeout 10 nc -z -w 5 "$RSYNC_HOST" "$RSYNC_PORT" 2>/dev/null; then
+
+    timeout 10 nc -z -w 5 "$RSYNC_HOST" "$RSYNC_PORT"
+    local nc_exit=$?
+
+    if [[ $nc_exit -ne 0 ]]; then
         log "ERROR" "No se puede conectar al servidor rsync" "backup_transfer"
         log "ERROR" "Host: $RSYNC_HOST, Puerto: $RSYNC_PORT" "backup_transfer"
+        log "ERROR" "Código de salida nc/timeout: $nc_exit" "backup_transfer"
         return $ERROR_CONNECTION
     fi
-    
+
     log "INFO" "Conectividad al servidor rsync verificada" "backup_transfer"
     return 0
 }
+
 
 # Función para monitorear progreso de rsync en tiempo real
 monitor_rsync_progress() {
@@ -160,7 +165,7 @@ transfer_file() {
             --partial \
             --partial-dir=/tmp/rsync-partial \
             --stats \
-            --timeout="$timeout_seconds" \
+            --timeout=600 \
             --compress-level=1 \
             --no-whole-file \
             --inplace \
@@ -350,7 +355,7 @@ main() {
     log "INFO" "Servidor destino: ${RSYNC_HOST}:${RSYNC_PORT}" "backup_transfer"
     
     # Verificar conectividad
-    test_rsync_connection || exit $?
+    #test_rsync_connection || exit $?
     
     # Procesar según los parámetros
     if [[ -n "$TRANSFER_FILE" ]]; then

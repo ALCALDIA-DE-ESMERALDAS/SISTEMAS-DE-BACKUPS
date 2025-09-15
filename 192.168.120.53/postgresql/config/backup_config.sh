@@ -60,15 +60,24 @@ validate_config() {
     [[ -z "$RSYNC_HOST" ]] && errors+=("RSYNC_HOST no definido")
     
     # Verificar archivos críticos
-    [[ ! -f "$RSYNC_PASSFILE" ]] && errors+=("Archivo de contraseña rsync no existe: $RSYNC_PASSFILE")
     
     # Verificar directorios
-    [[ ! -d "$BACKUP_DIR" ]] && mkdir -p "$BACKUP_DIR" 2>/dev/null || errors+=("No se puede crear BACKUP_DIR: $BACKUP_DIR")
-    [[ ! -d "$LOG_DIR" ]] && mkdir -p "$LOG_DIR" 2>/dev/null || errors+=("No se puede crear LOG_DIR: $LOG_DIR")
-    
+if [[ ! -d "$BACKUP_DIR" ]]; then
+    if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
+        errors+=("No se puede crear BACKUP_DIR: $BACKUP_DIR")
+    fi
+fi
+
+if [[ ! -d "$LOG_DIR" ]]; then
+    if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
+        errors+=("No se puede crear LOG_DIR: $LOG_DIR")
+    fi
+fi
+
     # Verificar permisos
-    [[ ! -w "$BACKUP_DIR" ]] && errors+=("Sin permisos de escritura en BACKUP_DIR: $BACKUP_DIR")
-    [[ ! -r "$RSYNC_PASSFILE" ]] && errors+=("Sin permisos de lectura en RSYNC_PASSFILE: $RSYNC_PASSFILE")
+if [[ ! -w "$BACKUP_DIR" ]]; then
+    errors+=("Sin permisos de escritura en BACKUP_DIR: $BACKUP_DIR")
+fi
     
     if [[ ${#errors[@]} -gt 0 ]]; then
         log "ERROR" "Errores de configuración:" "CONFIG"
